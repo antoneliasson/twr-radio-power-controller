@@ -46,6 +46,16 @@ void temperature_tag_event_handler(twr_tag_temperature_t *self, twr_tag_temperat
     }
 }
 
+void twr_radio_node_on_led_strip_brightness_set(uint64_t *id, uint8_t *brightness)
+{
+    uint16_t pwm_value = (*brightness * 20 + 19) / 255;
+    (void) id;
+
+    twr_log_debug("%s brightness=%u -> pwm_value=%u", __func__, *brightness, pwm_value);
+
+    twr_pwm_set(TWR_PWM_P1, pwm_value);
+}
+
 void twr_radio_node_on_state_get(uint64_t *id, uint8_t state_id)
 {
     (void) id;
@@ -84,6 +94,8 @@ void twr_radio_node_on_state_set(uint64_t *id, uint8_t state_id, bool *state)
 
 void application_init(void)
 {
+    twr_log_init(TWR_LOG_LEVEL_DUMP, TWR_LOG_TIMESTAMP_ABS);
+
     // Initialize LED
     twr_led_init(&led, TWR_GPIO_LED, false, false);
     twr_led_set_mode(&led, TWR_LED_MODE_OFF);
@@ -103,6 +115,13 @@ void application_init(void)
 
     // Initialize power module
     twr_module_power_init();
+
+    // Initialize PWM @ 25 kHz on LED strip data pin
+    // Duty cycle 0-100% -> PWM value 0-20
+    twr_pwm_init(TWR_PWM_P1);
+    twr_pwm_tim_configure(TWR_PWM_TIM2_P0_P1_P2_P3, 2, 20);
+    twr_pwm_set(TWR_PWM_P1, 2); // set fan speed to 10 % at power on
+    twr_pwm_enable(TWR_PWM_P1);
 
     twr_radio_pairing_request("power-controller", VERSION);
 
